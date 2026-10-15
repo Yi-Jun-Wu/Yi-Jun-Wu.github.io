@@ -1,30 +1,57 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <title>Redirecting...</title>
   <script>
+    const redirectMode = [
+      {
+        pattern: "/some-repo-name/some-path",
+        redirectTo: "/some-repo-name/another-path"
+      },
+      {
+        pattern: /^\/regex-pattern\/.*$/,
+        redirectTo: "/some-repo-name/another-path"
+      },
+      {
+        pattern: (path) => path.includes("some-string"),
+        redirectTo: "/some-repo-name/another-path"
+      },
+      {
+        pattern: "/redirecting-function",
+        redirectTo: (path, search) => {
+          // You can use the path and search parameters to determine the redirect URL
+          return "/some-repo-name/another-path" + search;
+        }
+      }
+    ];
+
     // 获取当前路径和查询参数
     const path = window.location.pathname;
     const search = window.location.search;
-
-    console.log('404 page loaded. Path:', path, 'Search:', search);
-    
-    // // 安全校验后，重定向到首页并携带路径参数
-    // if (path && path.startsWith('/') && !path.startsWith('//') && !path.includes('://')) {
-    //   // 如果是项目站点（如 username.github.io/repo），需要保留仓库名
-    //   // 请将 pathSegmentsToKeep 改为 1
-    //   var pathSegmentsToKeep = 0; 
-    //   var l = window.location;
-    //   l.replace(
-    //     l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-    //     l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?p=' +
-    //     encodeURIComponent(path.slice(1).split('/').slice(pathSegmentsToKeep).join('/')) + search
-    //   );
-    // }
+    for (const { pattern, redirectTo } of redirectMode) {
+      // test the pattern against the current path
+      if (typeof pattern === "string") {
+        if (!path.startsWith(pattern)) continue;
+      } else if (pattern instanceof RegExp) {
+        if (!pattern.test(path)) continue;
+      } else if (typeof pattern === "function") {
+        if (!pattern(path, search)) continue;
+      } else {
+        continue;
+      }
+      // If we reach here, it means the current path matches the pattern
+      const redirectUrl = typeof redirectTo === "function" ? redirectTo(path, search) : redirectTo + search;
+      const l = window.location;
+      l.replace(l.origin + (redirectUrl[0] === "/" ? "" : "/") + redirectUrl);
+      break; // Exit the loop after the first match
+    }
   </script>
 </head>
+
 <body>
   This is a custom 404 page. You will be redirected to the homepage shortly.
 </body>
+
 </html>
