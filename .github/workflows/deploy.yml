@@ -1,4 +1,4 @@
-name: Download and Deploy ArtCraft Apps to Github Pages
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-and-deploy:
+  deploy-homepage:
     runs-on: ubuntu-latest
     permissions:
       contents: read

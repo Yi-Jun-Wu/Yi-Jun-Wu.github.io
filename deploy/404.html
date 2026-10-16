@@ -1,17 +1,21 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 
 <head>
   <meta charset="utf-8">
-  <title>Redirecting...</title>
+  <!-- 重定向脚本：位于 charset 之后、一切样式与资源之前，同步阻塞、最先执行 -->
   <script>
+    // ===== 可自主配置的重定向规则（自上而下匹配，命中第一条即跳转）=====
+    // pattern 支持：字符串前缀 / 正则 / (path, search) => boolean
+    // redirectTo 支持：字符串路径（自动附加当前 search）/ (path, search) => 目标路径
+    // 目标可以是站内路径（/xxx）或完整 URL（https://...）
     const redirectMode = [
       {
         pattern: "/some-repo-name/some-path",
         redirectTo: "/some-repo-name/another-path"
       },
       {
-        pattern: /^\/regex-pattern\/.*$/,
+        pattern: /^\/+regex-pattern\/.*$/,
         redirectTo: "/some-repo-name/another-path"
       },
       {
@@ -27,31 +31,500 @@
       }
     ];
 
-    // 获取当前路径和查询参数
-    const path = window.location.pathname;
-    const search = window.location.search;
-    for (const { pattern, redirectTo } of redirectMode) {
-      // test the pattern against the current path
-      if (typeof pattern === "string") {
-        if (!path.startsWith(pattern)) continue;
-      } else if (pattern instanceof RegExp) {
-        if (!pattern.test(path)) continue;
-      } else if (typeof pattern === "function") {
-        if (!pattern(path, search)) continue;
-      } else {
-        continue;
+    window.__redirected = false;
+    try {
+      const path = window.location.pathname;
+      const search = window.location.search;
+      for (const { pattern, redirectTo } of redirectMode) {
+        let matched = false;
+        if (typeof pattern === "string") {
+          matched = path.startsWith(pattern);
+        } else if (pattern instanceof RegExp) {
+          matched = pattern.test(path);
+        } else if (typeof pattern === "function") {
+          matched = !!pattern(path, search);
+        }
+        if (!matched) continue;
+
+        const raw = typeof redirectTo === "function" ? redirectTo(path, search) : redirectTo + search;
+        if (typeof raw !== "string" || !raw) break;
+        const abs = /^[a-z][a-z0-9+.-]*:/i.test(raw);
+        const url = new URL(abs ? raw : (raw[0] === "/" ? raw : "/" + raw), location.origin);
+        // 目标即当前地址：放弃跳转避免死循环，交由 404 正文接管
+        if (url.href === location.href) break;
+
+        window.__redirected = true;
+        location.replace(url.href);
+        break; // 第一条命中的规则生效
       }
-      // If we reach here, it means the current path matches the pattern
-      const redirectUrl = typeof redirectTo === "function" ? redirectTo(path, search) : redirectTo + search;
-      const l = window.location;
-      l.replace(l.origin + (redirectUrl[0] === "/" ? "" : "/") + redirectUrl);
-      break; // Exit the loop after the first match
+    } catch (e) {
+      window.__redirected = false; // 规则异常时回退展示 404 正文
     }
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="color-scheme" content="light dark">
+  <title>404 · 页面未找到 | Yi-Jun-Wu.github.io</title>
+  <meta name="description" content="Yi-Jun-Wu.github.io — 404 页面未找到 / Page not found">
+  <style>
+    /* critical：只保证隐藏态与 noscript 兜底；完整主题样式按需注入 */
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #fff;
+      color: #1f2328;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+    }
+    noscript { display: block; padding: 56px 20px; text-align: center; }
+    .ns-title { font-size: 28px; font-weight: 600; margin: 0 0 8px; }
+    noscript p { color: #59636e; margin: 0 0 14px; font-size: 14px; }
+    noscript a { color: #0969da; text-decoration: none; }
+    noscript a:hover { text-decoration: underline; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #0d1117; color: #e6edf3; }
+      noscript p { color: #9198a1; }
+      noscript a { color: #2f81f7; }
+    }
+  </style>
+  <!-- 完整主题样式：数据块，确认无重定向前不会被解析应用，也零网络请求 -->
+  <script type="text/css" id="tpl-styles">
+    :root {
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d0d7de; --canvas: #f6f8fa;
+      --accent: #0969da; --success: #1f883d; --success-hover: #1a7f37;
+      --dot: rgba(31, 35, 40, .08); --glow: rgba(9, 105, 218, .07);
+      --focus: 0 0 0 3px rgba(9, 105, 218, .3); --shadow: 0 1px 0 rgba(31, 35, 40, .04);
+      --radius: 6px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --canvas: #151b23;
+        --accent: #2f81f7; --success: #238636; --success-hover: #2ea043;
+        --dot: rgba(148, 156, 166, .12); --glow: rgba(47, 129, 247, .09);
+        --focus: 0 0 0 3px rgba(47, 129, 247, .35); --shadow: 0 1px 0 rgba(1, 4, 9, .2);
+      }
+    }
+    body {
+      display: flex; flex-direction: column; min-height: 100vh;
+      background-color: var(--bg);
+      background-image: radial-gradient(ellipse 80% 45% at 50% -12%, var(--glow), transparent 70%), radial-gradient(var(--dot) 1px, transparent 0);
+      background-size: auto, 22px 22px; background-position: center top, 0 0;
+      color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.6;
+    }
+    #page {
+      width: 100%; max-width: 760px; margin: 0 auto; padding: 20px 20px 28px;
+      display: flex; flex-direction: column; gap: 26px; flex: 1;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+    #page.ready { animation: rise .45s cubic-bezier(.22, .61, .36, 1) both; }
+    @media (prefers-reduced-motion: reduce) {
+      #page.ready { animation: none; }
+      .btn, .chip, .arrow, .ghost, .searchbox { transition: none; }
+    }
+
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--fg); font-family: var(--mono); font-size: 13px; font-weight: 600; }
+    .brand:hover { color: var(--accent); }
+    .brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 22%, transparent); }
+    .brand .dim { color: var(--muted); font-weight: 400; }
+    .topnav { display: flex; gap: 4px; }
+    .iconlink { display: inline-flex; padding: 6px; border-radius: var(--radius); color: var(--muted); }
+    .iconlink:hover { color: var(--fg); background: var(--canvas); }
+    .icon { width: 18px; height: 18px; display: block; }
+
+    .hero { text-align: center; padding-top: 6px; }
+    .code {
+      margin: 0; font-family: var(--mono); font-weight: 700;
+      font-size: clamp(88px, 18vw, 160px); line-height: 1; letter-spacing: .06em;
+      color: transparent; -webkit-text-stroke: 2px var(--muted); user-select: none;
+    }
+    @supports not (-webkit-text-stroke: 2px #000) { .code { color: var(--muted); } }
+    .hero-title { margin: 16px 0 0; font-size: clamp(18px, 3vw, 22px); font-weight: 600; }
+    .hero-title .en { display: block; font-size: 14px; font-weight: 400; color: var(--muted); margin-top: 4px; }
+    .hero-sub { margin: 12px auto 0; max-width: 58ch; color: var(--muted); font-size: 14px; }
+    .hero-sub .en { display: block; font-size: 13px; margin-top: 2px; }
+
+    .pathcard { background: var(--canvas); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+    .pathline { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13px; min-width: 0; }
+    .method { color: var(--success); font-weight: 700; flex: none; }
+    .req { margin: 0; overflow-wrap: anywhere; flex: 1; min-width: 0; }
+    .ghost { flex: none; margin-left: auto; font-family: var(--font); font-size: 12px; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: var(--radius); padding: 3px 10px; cursor: pointer; transition: color .12s, border-color .12s; }
+    .ghost:hover { color: var(--fg); border-color: var(--muted); }
+    .ghost:focus-visible { outline: none; box-shadow: var(--focus); border-color: var(--accent); }
+    .referrer { margin: 8px 0 0; font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+    .referrer a { color: var(--accent); text-decoration: none; }
+    .referrer a:hover { text-decoration: underline; }
+    .guess { border: 1px solid var(--border); border-radius: 10px; background: var(--bg); box-shadow: var(--shadow); padding: 16px 18px; }
+    .guess-label { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--muted); }
+    .guess-label .en { font-weight: 400; margin-left: 6px; opacity: .85; }
+    .guess-cta { display: flex; align-items: baseline; gap: 10px; font-size: 18px; font-weight: 600; color: var(--accent); text-decoration: none; }
+    .guess-cta .en { font-size: 13px; font-weight: 400; color: var(--muted); }
+    .guess-cta .arrow { margin-left: auto; transition: transform .15s ease; }
+    .guess-cta:hover .arrow { transform: translateX(3px); }
+    .guess-path { margin: 6px 0 0; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { border: 1px solid var(--border); background: var(--canvas); border-radius: 999px; padding: 5px 14px; font-size: 14px; color: var(--fg); text-decoration: none; transition: border-color .12s, color .12s; }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .chip .p { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: 6px; }
+    .linkbtn { background: none; border: 0; padding: 10px 0 0; color: var(--accent); font-size: 13px; cursor: pointer; font-family: inherit; }
+    .linkbtn:hover { text-decoration: underline; }
+    .nomatch { margin: 0; font-size: 14px; color: var(--muted); }
+    .nomatch .en { display: block; font-size: 12px; }
+    .searchbox { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; background: var(--bg); transition: border-color .15s, box-shadow .15s; }
+    .searchbox:focus-within { border-color: var(--accent); box-shadow: var(--focus); }
+    .searchbox .icon { color: var(--muted); width: 16px; height: 16px; flex: none; }
+    .searchbox input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--fg); }
+    .searchbox input::placeholder { color: var(--muted); }
+    .results { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+    .results a { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: var(--radius); text-decoration: none; color: var(--fg); font-size: 14px; }
+    .results a:hover { background: var(--canvas); }
+    .r-title .en { color: var(--muted); font-size: 12px; margin-left: 6px; }
+    .r-path { font-family: var(--mono); font-size: 12px; color: var(--muted); flex: none; }
+    .nores { padding: 8px 10px; font-size: 13px; color: var(--muted); }
+    .nores a { color: var(--accent); text-decoration: none; }
+    .nores a:hover { text-decoration: underline; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 5px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--fg); font-size: 14px; line-height: 20px; text-decoration: none; transition: background .12s, border-color .12s, transform .12s; }
+    .btn:hover { background: var(--canvas); border-color: var(--muted); transform: translateY(-1px); }
+    .btn:focus-visible { outline: none; box-shadow: var(--focus); }
+    .btn-primary { background: var(--success); border-color: var(--success); color: #fff; }
+    .btn-primary:hover { background: var(--success-hover); border-color: var(--success-hover); }
+    .btn .en { font-size: 12px; color: var(--muted); }
+    .btn-primary .en { color: rgba(255, 255, 255, .75); }
+    .btn .icon { width: 16px; height: 16px; }
+
+    .footer { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: space-between; font-size: 12px; color: var(--muted); }
+    kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--canvas); color: var(--fg); }
   </script>
 </head>
 
 <body>
-  This is a custom 404 page. You will be redirected to the homepage shortly.
+  <noscript>
+    <p class="ns-title">404 · 页面未找到</p>
+    <p>当前浏览器未启用 JavaScript，无法执行重定向与搜索。<br>The requested page could not be found (JavaScript is disabled).</p>
+    <p><a href="/">返回首页 · Home</a> · <a href="https://github.com/Yi-Jun-Wu">GitHub 主页 · Profile</a></p>
+  </noscript>
+
+  <main id="page" hidden></main>
+
+  <template id="tpl-body">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <span>Yi-Jun-Wu<span class="dim">.github.io</span></span>
+      </a>
+      <nav class="topnav" aria-label="快捷导航 quick links">
+        <a class="iconlink" href="https://github.com/Yi-Jun-Wu" title="GitHub 主页" aria-label="GitHub 主页">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.23 1.83 1.23 1.07 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.09.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3z"/></svg>
+        </a>
+        <a class="iconlink" href="https://github.com/Yi-Jun-Wu/Yi-Jun-Wu.github.io" title="仓库源码" aria-label="仓库源码 repository">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 2.5A2.5 2.5 0 0 1 4.5 0h8.75a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2h-8a1 1 0 0 0-.714 1.7.75.75 0 1 1-1.072 1.05A2.495 2.495 0 0 1 2 11.5Zm10.5-1h-8a1 1 0 0 0-1 1v6.708A2.486 2.486 0 0 1 4.5 9h8ZM5 12.25a.25.25 0 0 1 .25-.25h3.5a.25.25 0 0 1 .25.25v3.25a.25.25 0 0 1-.4.2l-1.45-1.087a.249.249 0 0 0-.3 0L5.4 15.7a.25.25 0 0 1-.4-.2Z"/></svg>
+        </a>
+      </nav>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <p class="code" aria-hidden="true">404</p>
+      <h1 class="hero-title" id="hero-title">页面走丢了<span class="en">Page not found</span></h1>
+      <p class="hero-sub">我们翻遍了这个仓库，也没有找到你请求的页面。可能是链接过期，或我把它移走了。<span class="en">We scoured this repository but couldn't find the page you asked for — the link may be stale, or the page has moved.</span></p>
+    </section>
+
+    <section class="pathcard" aria-label="请求的路径 requested path">
+      <div class="pathline">
+        <span class="method">GET</span>
+        <code class="req" id="reqPath">/</code>
+        <button class="ghost" id="copyBtn" type="button" title="复制请求路径 copy path">复制</button>
+      </div>
+      <p class="referrer" id="referrer" hidden></p>
+    </section>
+
+    <section class="guess" aria-live="polite">
+      <div id="guessMain"></div>
+      <button class="linkbtn" id="toSearch" type="button" hidden>都不是？搜索一下 · Search instead</button>
+      <div id="searchBlock" hidden>
+        <p class="guess-label" style="margin-top:12px">搜索预设页面 <span class="en">Search pages</span></p>
+        <div class="searchbox">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.5 4.5 0 1 0-9 0 4.5 4.5 0 0 0 9 0Z"/></svg>
+          <input id="q" type="search" placeholder="输入关键词… / keyword" autocomplete="off" spellcheck="false" aria-label="搜索预设页面 search preset pages">
+        </div>
+        <ul class="results" id="results"></ul>
+      </div>
+    </section>
+
+    <nav class="actions" aria-label="主要导航 main navigation">
+      <a class="btn btn-primary" href="/">返回首页 <span class="en">Home</span></a>
+      <a class="btn" href="https://github.com/Yi-Jun-Wu">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.23 1.83 1.23 1.07 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.65 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.09.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3z"/></svg>
+        GitHub 主页
+      </a>
+      <a class="btn" href="https://github.com/Yi-Jun-Wu?tab=repositories">仓库列表 <span class="en">Repos</span></a>
+      <a class="btn" href="https://github.com/Yi-Jun-Wu/Yi-Jun-Wu.github.io/issues">报告问题 <span class="en">Issues</span></a>
+    </nav>
+
+    <footer class="footer">
+      <span>按 <kbd>H</kbd> 回到首页 · Press <kbd>H</kbd> to go home</span>
+      <span>GitHub Pages 托管 · Hosted on GitHub Pages</span>
+      <span>© <span id="year">2026</span> Yi-Jun-Wu</span>
+    </footer>
+  </template>
+  <script>
+    // ===== 可自主配置的站点关键词索引：title/path 用于展示与跳转，keywords 用于模糊匹配 =====
+    const siteIndex = [
+      { title: "首页", titleEn: "Home", path: "/", keywords: ["home", "index", "welcome", "首页", "主页", "官网", "landing"] },
+      { title: "仓库列表", titleEn: "Repositories", path: "https://github.com/Yi-Jun-Wu?tab=repositories", keywords: ["repo", "repos", "repository", "repositories", "project", "projects", "code", "仓库", "项目", "代码库"] },
+      { title: "GitHub 主页", titleEn: "Profile", path: "https://github.com/Yi-Jun-Wu", keywords: ["github", "profile", "user", "about-me", "yi-jun-wu", "个人主页", "关于作者", "用户"] },
+      { title: "关于", titleEn: "About", path: "/about/", keywords: ["about", "bio", "whoami", "introduce", "关于", "简介", "介绍"] },
+      { title: "博客", titleEn: "Blog", path: "/blog/", keywords: ["blog", "post", "posts", "article", "articles", "博客", "日志", "文章"] },
+      { title: "归档", titleEn: "Archives", path: "/archives/", keywords: ["archive", "archives", "history", "归档", "存档", "历史"] },
+      { title: "标签", titleEn: "Tags", path: "/tags/", keywords: ["tag", "tags", "category", "categories", "label", "标签", "分类", "主题"] },
+      { title: "联系", titleEn: "Contact", path: "/contact/", keywords: ["contact", "mail", "email", "reach", "联系", "邮箱", "联系方式"] }
+    ];
+
+    // ===== 以下为实现，无需改动 =====
+    (function () {
+      var page = document.getElementById("page");
+      var shown = false;
+
+      function show() {
+        if (shown) return;
+        shown = true;
+        var css = document.getElementById("tpl-styles");
+        var style = document.createElement("style");
+        style.textContent = css.textContent;
+        document.head.appendChild(style);
+        page.appendChild(document.getElementById("tpl-body").content.cloneNode(true));
+        page.hidden = false;
+        page.classList.add("ready");
+        init();
+      }
+
+      if (window.__redirected === true) {
+        // 跳转已发起：正文保持不加载；若导航迟迟未提交（如 replace 失败），兜底展示
+        var gone = false;
+        window.addEventListener("pagehide", function () { gone = true; }, { once: true });
+        setTimeout(function () { if (!gone) show(); }, 4000);
+      } else {
+        show();
+      }
+
+      function init() {
+        var requested = location.pathname + location.search;
+        document.getElementById("reqPath").textContent = requested;
+        document.getElementById("year").textContent = String(new Date().getFullYear());
+
+        var refEl = document.getElementById("referrer");
+        if (document.referrer) {
+          try {
+            var u = new URL(document.referrer);
+            var label = (u.host + u.pathname).slice(0, 90);
+            refEl.appendChild(document.createTextNode("← 来自 "));
+            var a = document.createElement("a");
+            a.href = document.referrer;
+            a.textContent = label;
+            refEl.appendChild(a);
+            refEl.appendChild(document.createTextNode(" · from"));
+            refEl.hidden = false;
+          } catch (e) { /* ignore bad referrer */ }
+        }
+
+        var copyBtn = document.getElementById("copyBtn");
+        copyBtn.addEventListener("click", function () {
+          function done() {
+            copyBtn.textContent = "已复制 ✓";
+            setTimeout(function () { copyBtn.textContent = "复制"; }, 1600);
+          }
+          function fallback() {
+            var ta = document.createElement("textarea");
+            ta.value = requested;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); done(); } catch (e) { }
+            document.body.removeChild(ta);
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(requested).then(done, fallback);
+          } else fallback();
+        });
+
+        // ---- 关键词索引：预处理 ----
+        function safeDecode(s) { try { return decodeURIComponent(s); } catch (e) { return s; } }
+        function tokensOf(s) {
+          return String(s).toLowerCase().split(/[^a-z0-9\u4e00-\u9fff]+/).filter(Boolean);
+        }
+        function lev(a, b) {
+          var m = a.length, n = b.length, i, j;
+          if (a === b) return 0;
+          if (!m) return n;
+          if (!n) return m;
+          var prev = new Array(n + 1), cur = new Array(n + 1);
+          for (j = 0; j <= n; j++) prev[j] = j;
+          for (i = 1; i <= m; i++) {
+            cur[0] = i;
+            for (j = 1; j <= n; j++) {
+              cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1));
+            }
+            var t = prev; prev = cur; cur = t;
+          }
+          return prev[n];
+        }
+        function scoreToken(q, h) {
+          if (!q || !h) return 0;
+          if (q === h) return 1;
+          if (q.length >= 2 && h.indexOf(q) >= 0) return 0.6;
+          if (h.length >= 2 && q.indexOf(h) >= 0) return 0.6;
+          if (q.length >= 3 && Math.abs(q.length - h.length) <= 2 && lev(q, h) <= 2) return 0.4;
+          return 0;
+        }
+        siteIndex.forEach(function (e) {
+          e._hay = tokensOf([e.title, e.titleEn || "", e.path].concat(e.keywords).join(" "));
+          e._path = String(e.path).toLowerCase();
+        });
+        function scoreEntry(tokens, e) {
+          var best = 0;
+          if (e._path === location.pathname.toLowerCase()) best = 1;
+          for (var i = 0; i < tokens.length; i++) {
+            var q = tokens[i];
+            for (var j = 0; j < e._hay.length; j++) {
+              var s = scoreToken(q, e._hay[j]);
+              if (s > best) best = s;
+            }
+          }
+          return best;
+        }
+        function rank(tokens) {
+          if (!tokens.length) return [];
+          return siteIndex
+            .map(function (e) { return { e: e, s: scoreEntry(tokens, e) }; })
+            .filter(function (x) { return x.s >= 0.4; })
+            .sort(function (a, b) { return b.s - a.s; });
+        }
+
+        // ---- 猜测区块 ----
+        var guessMain = document.getElementById("guessMain");
+        var toSearch = document.getElementById("toSearch");
+        var searchBlock = document.getElementById("searchBlock");
+        var qInput = document.getElementById("q");
+        var results = document.getElementById("results");
+
+        function el(tag, cls, text) {
+          var n = document.createElement(tag);
+          if (cls) n.className = cls;
+          if (text != null) n.textContent = text;
+          return n;
+        }
+
+        function renderMatch(scored) {
+          guessMain.textContent = "";
+          if (!scored.length) {
+            toSearch.hidden = true;
+            searchBlock.hidden = false;
+            var p = el("p", "nomatch");
+            p.appendChild(document.createTextNode("没有匹配的预设页面，试试搜索？"));
+            p.appendChild(el("span", "en", "No preset match — try searching below."));
+            guessMain.appendChild(p);
+            qInput.focus({ preventScroll: true });
+            return;
+          }
+          toSearch.hidden = false;
+          var label = el("p", "guess-label", "你是不是想找？");
+          label.appendChild(el("span", "en", "Did you mean…"));
+          guessMain.appendChild(label);
+
+          var primary = scored[0];
+          if (primary.s >= 0.8) {
+            var cta = el("a", "guess-cta");
+            cta.href = primary.e.path;
+            cta.appendChild(document.createTextNode("「" + primary.e.title + "」"));
+            cta.appendChild(el("span", "en", primary.e.titleEn || ""));
+            cta.appendChild(el("span", "arrow", "→"));
+            guessMain.appendChild(cta);
+            guessMain.appendChild(el("p", "guess-path", primary.e.path));
+            searchBlock.hidden = true;
+          } else {
+            var chips = el("div", "chips");
+            scored.slice(0, 3).forEach(function (x) {
+              var chip = el("a", "chip");
+              chip.href = x.e.path;
+              chip.appendChild(document.createTextNode(x.e.title));
+              chip.appendChild(el("span", "p", x.e.path));
+              chips.appendChild(chip);
+            });
+            guessMain.appendChild(chips);
+            searchBlock.hidden = true;
+          }
+        }
+
+        function renderResults() {
+          var val = qInput.value.trim();
+          results.textContent = "";
+          if (!val) return;
+          var scored = rank(tokensOf(safeDecode(val)));
+          if (!scored.length) {
+            var li = el("li", "nores");
+            li.appendChild(document.createTextNode("预设索引中没有结果。去 GitHub 搜索 → "));
+            var a = document.createElement("a");
+            a.href = "https://github.com/search?q=" + encodeURIComponent(val) + "&type=repositories";
+            a.target = "_blank";
+            a.rel = "noopener";
+            a.textContent = "GitHub";
+            li.appendChild(a);
+            results.appendChild(li);
+            return;
+          }
+          scored.slice(0, 6).forEach(function (x) {
+            var li = el("li");
+            var a = el("a");
+            a.href = x.e.path;
+            var t = el("span", "r-title", x.e.title);
+            t.appendChild(el("span", "en", x.e.titleEn || ""));
+            a.appendChild(t);
+            a.appendChild(el("span", "r-path", x.e.path));
+            li.appendChild(a);
+            results.appendChild(li);
+          });
+        }
+
+        toSearch.addEventListener("click", function () {
+          searchBlock.hidden = false;
+          qInput.focus();
+        });
+        qInput.addEventListener("input", renderResults);
+        qInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            var first = results.querySelector("a");
+            if (first) { e.preventDefault(); location.href = first.getAttribute("href"); }
+          }
+        });
+
+        // 初始模糊匹配：来源 = 当前路径分段 + ?q=
+        var initTokens = tokensOf(safeDecode(location.pathname));
+        var qParam = null;
+        try { qParam = new URLSearchParams(location.search).get("q"); } catch (e) { }
+        if (qParam) initTokens = tokensOf(qParam).concat(initTokens);
+        renderMatch(rank(initTokens));
+        if (qParam) {
+          searchBlock.hidden = false;
+          qInput.value = qParam;
+          renderResults();
+        }
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key !== "h" && e.key !== "H") return;
+          if (e.metaKey || e.ctrlKey || e.altKey) return;
+          var t = e.target, tag = t && t.tagName;
+          if (tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return;
+          location.href = "/";
+        });
+      }
+    })();
+  </script>
 </body>
 
 </html>
